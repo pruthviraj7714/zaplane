@@ -29,6 +29,7 @@ import {
   Sparkles,
   Activity,
   Layers,
+  Server,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Modal from "@/components/Modal";
@@ -40,124 +41,10 @@ import { BACKEND_URL } from "@/lib/config";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import HttpRequestActionForm from "@/components/forms/HttpRequestActionForm";
+import nodeTypes from "@/components/workflow/nodeTypes";
 
-const TriggerNode = ({ data, selected } : { data : any, selected : boolean}) => {
-  const getTriggerIcon = () => {
-    switch (data.triggerType) {
-      case "WEBHOOK":
-        return <Webhook className="w-4 h-4" />;
-      case "CRON":
-        return <Calendar className="w-4 h-4" />;
-      case "MANUAL":
-        return <Play className="w-4 h-4" />;
-      default:
-        return <Zap className="w-4 h-4" />;
-    }
-  };
-
-  const getTriggerColor = () => {
-    switch (data.triggerType) {
-      case "WEBHOOK":
-        return "bg-chart-2/20 text-chart-2 border-chart-2/30";
-      case "CRON":
-        return "bg-chart-3/20 text-chart-3 border-chart-3/30";
-      case "MANUAL":
-        return "bg-primary/20 text-primary border-primary/30";
-      default:
-        return "bg-muted/20 text-muted-foreground border-muted/30";
-    }
-  };
-
-  return (
-    <div
-      className={`px-4 py-3 shadow-2xl rounded-2xl bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-lg border-2 ${
-        selected 
-          ? "border-primary shadow-primary/30 scale-105" 
-          : "border-border/40 hover:border-border/60"
-      } min-w-[200px] transition-all duration-300 hover:scale-105 group`}
-    >
-      <div className="flex items-center space-x-3">
-        <div className={`p-2.5 rounded-xl border shadow-lg ${getTriggerColor()} group-hover:scale-110 transition-transform duration-300`}>
-          {getTriggerIcon()}
-        </div>
-        <div>
-          <div className="font-semibold text-sm text-card-foreground">Trigger</div>
-          <div className="text-xs text-muted-foreground capitalize">
-            {data.triggerType?.toLowerCase() || "Manual"}
-          </div>
-        </div>
-      </div>
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="!bg-primary !w-3 !h-3 !border-2 !border-primary-foreground"
-      />
-    </div>
-  );
-};
-
-const ActionNode = ({ data, selected } : {data : any, selected : boolean}) => {
-  const getActionIcon = () => {
-    switch (data.actionPlatform) {
-      case "TELEGRAM":
-        return <MessageSquare className="w-4 h-4" />;
-      case "RESEND":
-        return <Send className="w-4 h-4" />;
-      default:
-        return <Settings className="w-4 h-4" />;
-    }
-  };
-
-  const getActionColor = () => {
-    switch (data.actionPlatform) {
-      case "TELEGRAM":
-        return "bg-chart-2/20 text-chart-2 border-chart-2/30";
-      case "RESEND":
-        return "bg-chart-5/20 text-chart-5 border-chart-5/30";
-      default:
-        return "bg-muted/20 text-muted-foreground border-muted/30";
-    }
-  };
-
-  return (
-    <div
-      className={`px-4 py-3 shadow-2xl rounded-2xl bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-lg border-2 ${
-        selected 
-          ? "border-accent shadow-accent/30 scale-105" 
-          : "border-border/40 hover:border-border/60"
-      } min-w-[200px] transition-all duration-300 hover:scale-105 group`}
-    >
-      <div className="flex items-center space-x-3">
-        <div className={`p-2.5 rounded-xl border shadow-lg ${getActionColor()} group-hover:scale-110 transition-transform duration-300`}>
-          {getActionIcon()}
-        </div>
-        <div>
-          <div className="font-semibold text-sm text-card-foreground">Action</div>
-          <div className="text-xs text-muted-foreground">
-            {data.actionPlatform || "Select Platform"}
-          </div>
-        </div>
-      </div>
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="!bg-chart-3 !w-3 !h-3 !border-2 !border-primary-foreground"
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="!bg-primary !w-3 !h-3 !border-2 !border-primary-foreground"
-      />
-    </div>
-  );
-};
-
-const nodeTypes: NodeTypes = {
-  trigger: TriggerNode,
-  action: ActionNode,
-};
-
-type ModalType = "trigger" | "action-select" | "resend" | "telegram"
+type ModalType = "trigger" | "action-select" | "resend" | "telegram" | "http";
 
 const CreateWorkflowPage = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -176,10 +63,10 @@ const CreateWorkflowPage = () => {
     (params: Connection) => {
       setEdges((eds) => addEdge(params, eds));
     },
-    [setEdges]
+    [setEdges],
   );
 
-  const onNodeDoubleClick = useCallback((event : any, node : any) => {
+  const onNodeDoubleClick = useCallback((event: any, node: any) => {
     setSelectedNode(node);
     if (node.type === "trigger") {
       setModalType("trigger");
@@ -188,6 +75,8 @@ const CreateWorkflowPage = () => {
         setModalType("telegram");
       } else if (node.data.actionPlatform === "RESEND") {
         setModalType("resend");
+      } else if (node.data.actionPlatform === "HTTP_REQUEST") {
+        setModalType("http");
       } else {
         setModalType("action-select");
       }
@@ -211,7 +100,7 @@ const CreateWorkflowPage = () => {
     const newNode: Node = {
       id: `action-${Date.now()}`,
       type: "action",
-      position: { x: 175, y: 175 },
+      position: { x: 250, y: 50 },
       data: {
         actionPlatform: null,
         label: "Action Node",
@@ -227,14 +116,14 @@ const CreateWorkflowPage = () => {
         nds.map((node) =>
           node.id === nodeId
             ? { ...node, data: { ...node.data, ...newData } }
-            : node
-        )
+            : node,
+        ),
       );
     },
-    [setNodes]
+    [setNodes],
   );
 
-  const handleNodeSave = (data : any) => {
+  const handleNodeSave = (data: any) => {
     if (selectedNode) {
       updateNodeData(selectedNode.id, data);
     }
@@ -247,18 +136,24 @@ const CreateWorkflowPage = () => {
 
   const saveWorkflow = async () => {
     if (!workflowTitle.trim()) {
-      toast.warning("Please enter a workflow title", { position : "top-center"});
+      toast.warning("Please enter a workflow title", {
+        position: "top-center",
+      });
       return;
     }
 
     if (nodes.length === 0) {
-      toast.warning("Please add at least one node to the workflow", { position : "top-center"});
+      toast.warning("Please add at least one node to the workflow", {
+        position: "top-center",
+      });
       return;
     }
 
     const triggerNodes = nodes.filter((n) => n.type === "trigger");
     if (triggerNodes.length === 0) {
-      toast.warning("Please add at least one trigger node", { position : "top-center"});
+      toast.warning("Please add at least one trigger node", {
+        position: "top-center",
+      });
       return;
     }
 
@@ -270,7 +165,7 @@ const CreateWorkflowPage = () => {
         enabled: isEnabled,
         nodes: nodes.map((node) => ({
           tempId: node.id,
-          type: node.type?.toUpperCase() as 'TRIGGER' | 'ACTION',
+          type: node.type?.toUpperCase() as "TRIGGER" | "ACTION",
           position: node.position,
           triggerType: node.data.triggerType || null,
           actionPlatform: node.data.actionPlatform || null,
@@ -288,19 +183,23 @@ const CreateWorkflowPage = () => {
 
       console.log("Sending workflow data:", workflowData);
 
-      const response = await axios.post(`${BACKEND_URL}/api/v1/workflow`, workflowData, {
-        headers : {
-          Authorization : `Bearer ${data?.accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
+      const response = await axios.post(
+        `${BACKEND_URL}/api/v1/workflow`,
+        workflowData,
+        {
+          headers: {
+            Authorization: `Bearer ${data?.accessToken}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
       console.log("Workflow created successfully:", response.data);
       toast.success("Workflow Successfully Created");
-      router.push('/dashboard');
+      router.push("/dashboard");
     } catch (error: any) {
       console.error("Error saving workflow:", error);
-      
+
       if (error.response?.data?.message) {
         toast.error(`Failed to save workflow: ${error.response.data.message}`);
       } else if (error.response?.data?.error) {
@@ -334,7 +233,7 @@ const CreateWorkflowPage = () => {
               updateNodeData(selectedNode.id, { actionPlatform: "TELEGRAM" });
               setModalType("telegram");
             }}
-            className="w-full flex items-center space-x-4 p-4 border border-border/40 rounded-xl hover:bg-card/50 transition-all duration-300 hover:scale-105 hover:border-chart-2/40 backdrop-blur-sm"
+            className="w-full flex items-center cursor-pointer space-x-4 p-4 border border-border/40 rounded-xl hover:bg-card/50 transition-all duration-300 hover:scale-105 hover:border-chart-2/40 backdrop-blur-sm"
           >
             <div className="p-2 bg-chart-2/20 rounded-lg border border-chart-2/30">
               <MessageSquare className="w-6 h-6 text-chart-2" />
@@ -352,7 +251,7 @@ const CreateWorkflowPage = () => {
               updateNodeData(selectedNode.id, { actionPlatform: "RESEND" });
               setModalType("resend");
             }}
-            className="w-full flex items-center space-x-4 p-4 border border-border/40 rounded-xl hover:bg-card/50 transition-all duration-300 hover:scale-105 hover:border-chart-5/40 backdrop-blur-sm"
+            className="w-full flex items-center cursor-pointer space-x-4 p-4 border border-border/40 rounded-xl hover:bg-card/50 transition-all duration-300 hover:scale-105 hover:border-chart-5/40 backdrop-blur-sm"
           >
             <div className="p-2 bg-chart-5/20 rounded-lg border border-chart-5/30">
               <Send className="w-6 h-6 text-chart-5" />
@@ -361,6 +260,26 @@ const CreateWorkflowPage = () => {
               <div className="font-medium text-foreground">Resend</div>
               <div className="text-sm text-muted-foreground">
                 Send professional emails via Resend API
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              updateNodeData(selectedNode.id, {
+                actionPlatform: "HTTP_REQUEST",
+              });
+              setModalType("http");
+            }}
+            className="w-full flex items-center cursor-pointer space-x-4 p-4 border border-border/40 rounded-xl hover:bg-card/50 transition-all duration-300 hover:scale-105 hover:border-chart-2/40 backdrop-blur-sm"
+          >
+            <div className="p-2 bg-chart-7/20 rounded-lg border border-chart-7/30">
+              <Server className="w-6 h-6 text-chart-7" />
+            </div>
+            <div className="text-left">
+              <div className="font-medium text-foreground">HTTP Request</div>
+              <div className="text-sm text-muted-foreground">
+                Send HTTP requests to any API
               </div>
             </div>
           </button>
@@ -411,7 +330,9 @@ const CreateWorkflowPage = () => {
                 onChange={(e) => setIsEnabled(e.target.checked)}
                 className="rounded-lg border-border/40 text-accent focus:ring-accent bg-input/80 w-4 h-4"
               />
-              <span className="text-sm font-medium text-foreground">Enabled</span>
+              <span className="text-sm font-medium text-foreground">
+                Enabled
+              </span>
             </label>
 
             <button
@@ -431,7 +352,9 @@ const CreateWorkflowPage = () => {
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <Activity className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-semibold text-foreground">Add Nodes</h3>
+              <h3 className="text-lg font-semibold text-foreground">
+                Add Nodes
+              </h3>
             </div>
             <p className="text-sm text-muted-foreground">
               Drag and drop to build your automation workflow
@@ -483,15 +406,21 @@ const CreateWorkflowPage = () => {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Nodes:</span>
-                  <span className="font-medium text-foreground">{nodes.length}</span>
+                  <span className="font-medium text-foreground">
+                    {nodes.length}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Connections:</span>
-                  <span className="font-medium text-foreground">{edges.length}</span>
+                  <span className="font-medium text-foreground">
+                    {edges.length}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status:</span>
-                  <Badge className={`text-xs ${isEnabled ? 'bg-chart-3/20 text-chart-3 border-chart-3/30' : 'bg-muted/20 text-muted-foreground border-muted/30'}`}>
+                  <Badge
+                    className={`text-xs ${isEnabled ? "bg-chart-3/20 text-chart-3 border-chart-3/30" : "bg-muted/20 text-muted-foreground border-muted/30"}`}
+                  >
                     {isEnabled ? "Enabled" : "Disabled"}
                   </Badge>
                 </div>
@@ -503,11 +432,10 @@ const CreateWorkflowPage = () => {
             <div className="flex items-start gap-3">
               <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-primary mb-1">
-                  Pro Tip
-                </p>
+                <p className="text-sm font-medium text-primary mb-1">Pro Tip</p>
                 <p className="text-xs text-muted-foreground">
-                  Double-click on any node to configure its settings and customize the automation behavior
+                  Double-click on any node to configure its settings and
+                  customize the automation behavior
                 </p>
               </div>
             </div>
@@ -527,11 +455,7 @@ const CreateWorkflowPage = () => {
             fitView
             className="bg-gradient-to-br from-background/50 to-card/20"
           >
-            <Background 
-              color="oklch(1 0 0 / 8%)" 
-              gap={24} 
-              size={1}
-            />
+            <Background color="oklch(1 0 0 / 8%)" gap={24} size={1} />
             <Controls className="!bg-card/90 !border !border-border/40 !backdrop-blur-lg" />
             <MiniMap
               className="!bg-card/90 !border !border-border/40 !backdrop-blur-lg !rounded-xl"
@@ -569,6 +493,13 @@ const CreateWorkflowPage = () => {
 
       <ResendActionForm
         isOpen={modalType === "resend"}
+        onClose={closeModal}
+        actionData={selectedNode?.data}
+        onSave={handleNodeSave}
+      />
+
+      <HttpRequestActionForm
+        isOpen={modalType === "http"}
         onClose={closeModal}
         actionData={selectedNode?.data}
         onSave={handleNodeSave}

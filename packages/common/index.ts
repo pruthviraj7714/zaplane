@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PlatformSchema = z.enum(["TELEGRAM", "RESEND"], {
+export const PlatformSchema = z.enum(["TELEGRAM", "RESEND", "HTTP_REQUEST"], {
   error: "Invalid platform",
 });
 
@@ -20,7 +20,7 @@ export const WorkflowExecutionStatusSchema = z.enum(
   ["RUNNING", "SUCCESS", "FAILED", "CANCELLED"],
   {
     error: "Invalid workflow execution status",
-  }
+  },
 );
 
 export const ObjectIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, {
@@ -74,11 +74,11 @@ export const BaseNodeSchema = z.object({
 
 export const NewNodeSchema = BaseNodeSchema.extend({
   tempId: z.string(),
-})
+});
 
 export const PrevNodeSchema = BaseNodeSchema.extend({
   id: z.string(),
-})
+});
 
 export const NodeUnionSchema = z.union([NewNodeSchema, PrevNodeSchema]);
 
@@ -103,11 +103,13 @@ export const CreateWorkflowSchema = WorkflowSchema.omit({
   workflowExecutions: true,
 });
 
-export const UpdateWorkflowSchema = WorkflowSchema.partial().omit({
-  workflowExecutions: true,
-}).extend({
-  deletedNodeIds : z.array(z.string())
-});
+export const UpdateWorkflowSchema = WorkflowSchema.partial()
+  .omit({
+    workflowExecutions: true,
+  })
+  .extend({
+    deletedNodeIds: z.array(z.string()),
+  });
 
 export const WorkflowWithNodesSchema = WorkflowSchema.extend({
   nodes: z.array(NodeWithWebhookSchema),

@@ -21,13 +21,14 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import { BACKEND_URL } from "@/lib/config";
 import { toast } from "sonner";
+import { Button } from "./ui/button";
 
 type STATUS = "SUCCESS" | "FAILED" | "RUNNING";
 
 interface NodeExecution {
   id: string;
   nodeId: string;
-  status: STATUS
+  status: STATUS;
   startedAt: Date;
   finishedAt: Date;
   result?: string;
@@ -51,17 +52,32 @@ const ExecutionsTab = () => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("ALL");
-  const { data } = useSession();
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalExecutions, setTotalExecutions] = useState(0);
+  const [successCount, setSuccessCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
+  const [runningCount, setRunningCount] = useState(0);
+  const { data, status } = useSession();
 
   const fetchExecutions = async () => {
+    if (status === "unauthenticated") return;
     try {
       setLoading(true);
-      const res = await axios.get(`${BACKEND_URL}/api/v1/executions`, {
-        headers: {
-          Authorization: `Bearer ${data?.accessToken}`,
+      const res = await axios.get(
+        `${BACKEND_URL}/api/v1/executions?page=${page}&status=${filter}&limit=6`,
+        {
+          headers: {
+            Authorization: `Bearer ${data?.accessToken}`,
+          },
         },
-      });
-      setExecutions(res.data);
+      );
+      setExecutions(res.data.executions);
+      setTotalPages(res.data.totalPages);
+      setTotalExecutions(res.data.totalExecutions);
+      setSuccessCount(res.data.successCount);
+      setFailedCount(res.data.failedCount);
+      setRunningCount(res.data.runningCount);
     } catch (error: any) {
       toast.error(error.response?.data?.message ?? error.message);
     } finally {
@@ -70,8 +86,8 @@ const ExecutionsTab = () => {
   };
 
   useEffect(() => {
-    if (data && data.accessToken) fetchExecutions();
-  }, [data]);
+    if (status === "authenticated") fetchExecutions();
+  }, [status, page, filter]);
 
   const formatTime = (dateString: Date) => {
     if (!dateString) return "N/A";
@@ -97,13 +113,13 @@ const ExecutionsTab = () => {
     const startTime = new Date(start);
     const endTime = new Date(end);
     const diff = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
-  
+
     if (diff < 60) return `${diff}s`;
     if (diff < 3600) return `${Math.round(diff / 60)}m`;
     return `${Math.round(diff / 3600)}h`;
   };
-  
-  const getStatusBadge = (status : STATUS, isNode : boolean = false) => {
+
+  const getStatusBadge = (status: STATUS, isNode: boolean = false) => {
     const baseClasses = `inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 shadow-lg ${isNode ? "text-xs px-2 py-0.5" : ""}`;
 
     switch (status) {
@@ -154,14 +170,12 @@ const ExecutionsTab = () => {
     }
   };
 
-  const filteredExecutions = executions.filter((exec) => {
-    if (filter === "ALL") return true;
-    return exec.status === filter;
-  });
-
   const getFilterCount = (status: string) => {
-    if (status === "ALL") return executions.length;
-    return executions.filter((exec) => exec.status === status).length;
+    if (status === "ALL") return totalExecutions;
+    else if (status === "SUCCESS") return successCount;
+    else if (status === "FAILED") return failedCount;
+    else if (status === "RUNNING") return runningCount;
+    return 0;
   };
 
   return (
@@ -183,11 +197,12 @@ const ExecutionsTab = () => {
                 Workflow Executions
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                Monitor and track your workflow execution history with real-time insights
+                Monitor and track your workflow execution history with real-time
+                insights
               </p>
             </div>
           </div>
-          
+
           <Badge className="bg-gradient-to-r from-primary/20 to-accent/20 text-primary border border-primary/30 px-4 py-2 animate-pulse shadow-lg shadow-primary/20">
             <Shield className="w-4 h-4 mr-2" />
             Live Monitoring
@@ -224,21 +239,24 @@ const ExecutionsTab = () => {
               </div>
             </div>
           </div>
-        ) : filteredExecutions.length === 0 ? (
+        ) : executions.length === 0 ? (
           <div className="text-center py-16">
             <div className="bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-lg border border-border/40 rounded-2xl p-12 shadow-2xl shadow-primary/10 max-w-md mx-auto">
               <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-muted/20 to-muted/10 flex items-center justify-center mb-6 border border-border/30">
                 <Activity className="w-10 h-10 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">No executions found</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">
+                No executions found
+              </h3>
               <p className="text-muted-foreground">
-                Your workflow executions will appear here once you start running workflows
+                Your workflow executions will appear here once you start running
+                workflows
               </p>
             </div>
           </div>
         ) : (
           <div className="space-y-6">
-            {filteredExecutions.map((exec, index) => (
+            {executions.map((exec, index) => (
               <div
                 key={exec.id}
                 className="group relative bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-lg border border-border/40 rounded-2xl overflow-hidden shadow-2xl hover:shadow-accent/20 transition-all duration-500 hover:scale-[1.02] hover:border-accent/30"
@@ -325,7 +343,8 @@ const ExecutionsTab = () => {
                               className="bg-gradient-to-br from-card/60 to-card/30 backdrop-blur-sm border border-border/30 rounded-xl p-4 hover:bg-card/70 transition-all duration-300 hover:border-border/50"
                               style={{
                                 animationDelay: `${nodeIndex * 50}ms`,
-                                animation: "slideInRight 0.3s ease-out forwards",
+                                animation:
+                                  "slideInRight 0.3s ease-out forwards",
                               }}
                             >
                               <div className="flex items-center justify-between mb-3">
@@ -355,7 +374,13 @@ const ExecutionsTab = () => {
                                     </span>
                                   </div>
                                   <p className="text-sm text-card-foreground leading-relaxed">
-                                    {node.result}
+                                    {typeof node.result === "string" ? (
+                                      node.result
+                                    ) : (
+                                      <pre>
+                                        {JSON.stringify(node.result, null, 2)}
+                                      </pre>
+                                    )}
                                   </p>
                                 </div>
                               )}
@@ -381,7 +406,9 @@ const ExecutionsTab = () => {
                           <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-muted/20 to-muted/10 flex items-center justify-center mb-4 border border-border/30">
                             <Activity className="w-8 h-8 text-muted-foreground opacity-50" />
                           </div>
-                          <p className="text-muted-foreground">No execution steps available</p>
+                          <p className="text-muted-foreground">
+                            No execution steps available
+                          </p>
                         </div>
                       )}
                     </div>
@@ -389,6 +416,22 @@ const ExecutionsTab = () => {
                 )}
               </div>
             ))}
+            <div className="flex items-center justify-between mt-8">
+              <Button
+                variant="outline"
+                onClick={() => setPage(page - 1)}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setPage(page + 1)}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
       </div>

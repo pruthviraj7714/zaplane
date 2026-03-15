@@ -34,7 +34,7 @@ export function DashboardHeader() {
     <header className="sticky top-0 z-50 w-full border-b border-border/30 bg-gradient-to-r from-card/95 via-card/90 to-card/95 backdrop-blur-lg supports-[backdrop-filter]:bg-card/60 shadow-lg shadow-primary/5">
       <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 opacity-50"></div>
 
-      <div className="relative flex px-6 h-20 max-w-screen-2xl items-center">
+      <div className="relative flex px-6 h-20 max-w-screen items-center">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
             <Button

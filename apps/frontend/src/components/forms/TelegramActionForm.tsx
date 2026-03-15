@@ -73,7 +73,7 @@ const TelegramActionForm = ({
               onChange={(e) =>
                 setFormData({ ...formData, chatId: e.target.value })
               }
-              placeholder="-1001234567890"
+              placeholder="1234567890"
               className="w-full p-3 bg-input border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-foreground placeholder:text-muted-foreground"
             />
             <p className="text-sm text-muted-foreground mt-1">

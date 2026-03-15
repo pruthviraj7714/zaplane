@@ -10,7 +10,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, Plus, Grid3x3, List, Zap, Activity, Clock, Sparkles, TrendingUp } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Plus,
+  Grid3x3,
+  List,
+  Zap,
+  Activity,
+  Clock,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import WorkflowCard from "@/components/workflow-card";
@@ -50,7 +61,7 @@ interface IWorkflow {
   enabled: boolean;
   userId: string;
   connections: IConnection[];
-  executions : any;
+  executions: any;
   nodes: INode[];
   updatedAt?: string;
   createdAt?: string;
@@ -91,11 +102,11 @@ const Dashboard = () => {
           headers: {
             Authorization: `Bearer ${data?.accessToken}`,
           },
-        }
+        },
       );
 
       setWorkflows((prev) =>
-        prev.map((w) => (w.id === id ? { ...w, enabled } : w))
+        prev.map((w) => (w.id === id ? { ...w, enabled } : w)),
       );
       toast.success(`Workflow ${enabled ? "activated" : "deactivated"}`);
     } catch (error: any) {
@@ -119,7 +130,7 @@ const Dashboard = () => {
   };
 
   const filteredWorkflows = workflows.filter((workflow) =>
-    workflow.title.toLowerCase().includes(searchQuery.toLowerCase())
+    workflow.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   useEffect(() => {
@@ -127,7 +138,6 @@ const Dashboard = () => {
       fetchWorkflows();
     }
   }, [data]);
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card/50 relative overflow-hidden">
@@ -150,10 +160,10 @@ const Dashboard = () => {
               </Badge>
             </div>
             <p className="text-xl text-muted-foreground">
-              Manage your workflows, credentials, and executions with powerful automation tools
+              Manage your workflows, credentials, and executions with powerful
+              automation tools
             </p>
           </div>
-
         </div>
 
         <div className="flex items-center gap-1 mb-10 bg-card/50 backdrop-blur-sm rounded-2xl p-2 border border-border/30 w-fit shadow-lg shadow-primary/5">
@@ -196,7 +206,9 @@ const Dashboard = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-card/95 backdrop-blur-lg border-border/30">
-                    <SelectItem value="last-updated">Sort by last updated</SelectItem>
+                    <SelectItem value="last-updated">
+                      Sort by last updated
+                    </SelectItem>
                     <SelectItem value="name">Sort by name</SelectItem>
                     <SelectItem value="created">Sort by created</SelectItem>
                   </SelectContent>
@@ -208,8 +220,8 @@ const Dashboard = () => {
                     size="sm"
                     onClick={() => setViewMode("list")}
                     className={`p-3 rounded-lg transition-all duration-200 ${
-                      viewMode === "list" 
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25" 
+                      viewMode === "list"
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                         : "text-muted-foreground hover:text-foreground hover:bg-card/60"
                     }`}
                   >
@@ -220,8 +232,8 @@ const Dashboard = () => {
                     size="sm"
                     onClick={() => setViewMode("grid")}
                     className={`p-3 rounded-lg transition-all duration-200 ${
-                      viewMode === "grid" 
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25" 
+                      viewMode === "grid"
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                         : "text-muted-foreground hover:text-foreground hover:bg-card/60"
                     }`}
                   >
@@ -239,11 +251,13 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className={`${
-              viewMode === "grid" 
-                ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" 
-                : "space-y-4"
-            }`}>
+            <div
+              className={`${
+                viewMode === "grid"
+                  ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                  : "space-y-4"
+              }`}
+            >
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="animate-pulse">
@@ -256,11 +270,11 @@ const Dashboard = () => {
                 ))
               ) : filteredWorkflows.length > 0 ? (
                 filteredWorkflows.map((workflow) => (
-                  <WorkflowCard 
-                    key={workflow.id} 
-                    workflow={workflow} 
+                  <WorkflowCard
+                    key={workflow.id}
+                    workflow={workflow}
                     onView={() => router.push(`/workflows/${workflow.id}`)}
-                    onDeleteWorkflow={handleDeleteWorkflow} 
+                    onDeleteWorkflow={handleDeleteWorkflow}
                     onToggleWorkflow={handleToggleWorkflow}
                   />
                 ))
@@ -269,14 +283,17 @@ const Dashboard = () => {
                   <div className="w-20 h-20 bg-card/50 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm border border-border/30">
                     <Search className="w-10 h-10 text-muted-foreground" />
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">No workflows found</h3>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">
+                    No workflows found
+                  </h3>
                   <p className="text-muted-foreground text-lg mb-6">
                     {searchQuery
                       ? "Try adjusting your search terms"
                       : "Create your first workflow to get started"}
                   </p>
                   <Button
-                    className="bg-gradient-to-r from-accent to-primary hover:from-accent/90 hover:to-primary/90 text-accent-foreground shadow-lg shadow-accent/25 hover:shadow-accent/40 transition-all duration-300 hover:scale-105 rounded-xl px-6 py-3"
+                    onClick={() => router.push("/workflow/create")}
+                    className="bg-gradient-to-r from-accent to-primary hover:from-accent/90 cursor-pointer hover:to-primary/90 text-accent-foreground shadow-lg shadow-accent/25 hover:shadow-accent/40 transition-all duration-300 hover:scale-105 rounded-xl px-6 py-3"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Create Workflow
@@ -291,7 +308,9 @@ const Dashboard = () => {
           <ExecutionsTab />
         ) : (
           <div className="text-center py-20">
-            <h3 className="text-xl font-semibold text-foreground">Invalid Tab Selected</h3>
+            <h3 className="text-xl font-semibold text-foreground">
+              Invalid Tab Selected
+            </h3>
           </div>
         )}
       </div>
