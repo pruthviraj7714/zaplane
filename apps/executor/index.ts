@@ -3,6 +3,7 @@ import redisclient from "@repo/redisclient";
 import prisma from "@repo/db";
 import { sendTelegramMessage } from "./actionNodes/telegram";
 import { sendResendEmail } from "./actionNodes/resend";
+import { sendHttpRequest } from "./actionNodes/http-request";
 
 type NodeResult = Record<string, any>;
 
@@ -13,10 +14,10 @@ type WorkflowRunResponse = {
 
 const runWorkerFlow = async (
   workflowId: string,
-  userId: string
+  userId: string,
 ): Promise<WorkflowRunResponse> => {
   try {
-    const workflow = await prisma.workflow.findFirst({
+    const workflow = await prisma.workflow.findUnique({
       where: { id: workflowId },
       include: {
         nodes: true,
@@ -71,6 +72,8 @@ const runWorkerFlow = async (
         },
       });
 
+      console.log(node);
+
       const output = await executeNode(node, results, userId);
       results[node.id] = output;
       executed.add(node.id);
@@ -101,7 +104,7 @@ const runWorkerFlow = async (
             type: "ERROR",
             message: output.result,
             nodeId: node.id,
-          })
+          }),
         );
         break;
       }
@@ -123,7 +126,7 @@ const runWorkerFlow = async (
           type: node.type === "TRIGGER" ? "TRIGGER_EXECUTED" : "NODE_EXECUTED",
           message: output.result,
           nodeId: node.id,
-        })
+        }),
       );
 
       const outgoing = connections.filter((c) => c.sourceId === node.id);
@@ -156,21 +159,19 @@ const publisher = redisclient.duplicate();
 async function executeNode(
   node: any,
   results: Record<string, NodeResult>,
-  userId: string
+  userId: string,
 ): Promise<{
   success: boolean;
   result: any;
 }> {
-  console.log(node);
-  
   switch (node.type) {
     case "TRIGGER":
-      switch(node.triggerType) {
+      switch (node.triggerType) {
         case "MANUAL":
           return { success: true, result: "manually triggered" };
         case "WEBHOOK":
-          return { success : true, result : "webhook triggered"};
-      };
+          return { success: true, result: "webhook triggered" };
+      }
       break;
 
     case "ACTION": {
@@ -182,6 +183,10 @@ async function executeNode(
         case "RESEND":
           const res2 = await sendResendEmail(node, userId);
           return { success: res2.success, result: res2.message };
+
+        case "HTTP_REQUEST":
+          const res3 = await sendHttpRequest(node);
+          return { success: res3.success, result: res3.message };
       }
       break;
     }
@@ -223,7 +228,7 @@ const worker = new Worker(
       },
     });
   },
-  { connection: redisclient, concurrency: 50 }
+  { connection: redisclient, concurrency: 50 },
 );
 
 worker.on("completed", async (job) => {
@@ -232,7 +237,7 @@ worker.on("completed", async (job) => {
     `workflow:${job.data.workflowId}`,
     JSON.stringify({
       type: "COMPLETED",
-    })
+    }),
   );
 });
 
