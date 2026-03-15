@@ -1,26 +1,24 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
   output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id          String        @id @default(uuid())
+  id          String              @id @default(uuid())
   email       String
-  username    String        @unique
+  username    String              @unique
   password    String
   workflows   Workflow[]
-  executions    WorkflowExecution[]
+  executions  WorkflowExecution[]
   credentials Credentials[]
 }
 
@@ -95,9 +93,9 @@ model WorkflowExecution {
   startedAt  DateTime                @default(now())
   finishedAt DateTime?
   nodes      WorkflowNodeExecution[]
-  
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   workflowId String
   workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 }
@@ -124,6 +122,7 @@ model AvailableCredentialsApplications {
 enum PLATFORM {
   TELEGRAM
   RESEND
+  HTTP_REQUEST
 }
 
 enum NodeType {
